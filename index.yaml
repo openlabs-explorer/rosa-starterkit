@@ -14,6 +14,11 @@ categories:
     - Backend
     - Express
     - Frontend
+commands:
+    - name: List content
+      cmd: cat
+      cwd: /home/student/projects
+      stepMessage: Listing contents
 intro: readme.md
 documentation: 
 environment:
