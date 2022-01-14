@@ -4,53 +4,9 @@
 kubectl create ns local-k8s-setup
 ```
 
-### 2 - Create the secret and configmaps
+### 2 - Create the configmap
 
-Create self signed SSL certificate and key to access the application securely. 
-
-```execute
-openssl req -nodes -new -x509 -keyout key.pem -out cert.pem -days 365 -subj "/C=US/ST=NY/L=NY/O=IBM/OU=DGC/CN=open-trial-labs.ibm.com"
-```
-
-Create tls secret from the cert and key
-
-```execute
-kubectl create secret tls nginxsecret --key key.pem --cert cert.pem  -n local-k8s-setup
-```
-
-Create the nginx configuration file 
-
-```execute
-cat <<EOF>nginx.conf
-
-server {
-        listen 8080 default_server;
-        listen [::]:8080 default_server ipv6only=on;
-
-        listen 443 ssl;
-    
-        root /usr/share/nginx/html;
-        index index.html;
-    
-        server_name localhost;
-        ssl_certificate /etc/nginx/ssl/tls.crt;
-        ssl_certificate_key /etc/nginx/ssl/tls.key;
-    
-        location / {
-          root /usr/share/nginx/html;
-          try_files \$uri /index.html;
-        }
-}
-EOF
-```
-
-Create a Configmap for the nginx configuration file.
-
-```execute
-kubectl create configmap nginxconfigmap --from-file=nginx.conf -n local-k8s-setup
-```
-
-Create the index.html.
+Create the nginx configuration file index.html.
 
 ```execute
 cat <<EOF>index.html
@@ -99,9 +55,6 @@ spec:
   - port: 8080
     protocol: TCP
     name: http
-  - port: 443
-    protocol: TCP
-    name: https
   selector:
     app: nginx
 ---
@@ -113,29 +66,21 @@ metadata:
     app: nginx
 spec:
   volumes:
-  - name: secret-volume
-    secret:
-       secretName: nginxsecret
-  - name: configmap-volume
-    configMap:
-       name: nginxconfigmap
   - name: index-volume
     configMap:
        name: indexconfigmap
   containers:
   - name: nginxhttps
-    image: nginx:1.19.2
+    image: registry.access.redhat.com/ubi8/nginx-120:1-7
+    command:
+    - nginx
+    - -g 
+    - "daemon off;"
     ports:
-    - containerPort: 443
     - containerPort: 8080
     volumeMounts:
-    - mountPath: /etc/nginx/ssl
-      name: secret-volume
-    - mountPath: /etc/nginx/conf.d
-      name: configmap-volume
-    - mountPath: /usr/share/nginx/html
+    - mountPath: /opt/app-root/src
       name: index-volume
-EOF
 ```
 
 Create the service and application
@@ -147,7 +92,7 @@ kubectl create -f nginxapp.yaml -n local-k8s-setup
 ### 4 - Verify the setup is complete
 
 ```execute
-kubectl get svc,pod,configmap,secret -n local-k8s-setup
+kubectl get svc,pod,configmap -n local-k8s-setup
 ```
 
 Check the URL in the browser
@@ -246,7 +191,7 @@ kubectl get deployment -n nginx-operator-system
 Get the resources installed by the CRD. It should give the resources selected while creating the Operator. 
 
 ```execute
-kubectl get pod,svc,configmap,secret -n nginx-operator-system
+kubectl get pod,svc,configmap -n nginx-operator-system
 ```
 
 Sample output-
