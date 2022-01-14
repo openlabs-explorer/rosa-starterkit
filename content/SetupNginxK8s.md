@@ -81,6 +81,7 @@ spec:
     volumeMounts:
     - mountPath: /opt/app-root/src
       name: index-volume
+EOF
 ```
 
 Create the service and application
